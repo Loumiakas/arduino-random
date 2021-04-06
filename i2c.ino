@@ -4,7 +4,9 @@
  *  is stated that the device address will always start with first four bytes
  *  as being 1010 followed by value of hard-wired address pins  A2, A1 and A0.
  *  These pins are set to low on my setup, so they are set to 000
- *  respectively. Last bit is used for specifying read/write operation.
+ *  respectively. Last bit is used for specifying read/write operation, and
+ *  becuase of that, wire library expects the address bits shifted once to the 
+ *  right.
  */
 #define I2C_ADDR        0b01010000
 /*
