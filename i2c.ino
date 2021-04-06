@@ -34,22 +34,6 @@ void setup()
         //
         byte eeprom_data[EEPROM_SIZE];
         //
-        //  Iterate through EEPROM memory and write the 0xFF bytes.
-        //
-        //for(int i=0; i<sizeof(eeprom_data); ++i)
-        //{
-        //    int stat = writeI2CAddr(i, (byte)i);
-        //    if(stat != 0)
-        //    {
-        //        Serial.print("writeI2CAddr failed! Address: ");
-        //        Serial.print(i);
-        //        Serial.print(" Value: ");
-        //        Serial.print(i);
-        //        Serial.print(" Error code: ");
-        //        Serial.println(stat);
-        //    }
-        //}
-        //
         //  Iterate through EEPROM memory and extract the bytes.
         //
         for(int i=0; i<sizeof(eeprom_data); ++i)
@@ -109,7 +93,7 @@ byte readI2CAddr(const unsigned int addr)
     //
     Wire.requestFrom(I2C_ADDR, 1);
     //
-    //  If the data is available, return it
+    //  If the data is available, return it.
     //
     if (Wire.available())
     {
