@@ -1,44 +1,48 @@
 #include <ESP8266WiFi.h>
+#include <HCSR04.h>
 #include <MQTT.h>
-#include <NewPing.h>
-
-#define TRIG_PIN        14      // D5
-#define ECHO_PIN        12      // D6
-#define MAX_DISTANCE    200     // 2 metres
-#define SLEEP_DURATION  21600   // 6 hours
-#define WIFI_MQTT_TRY   10      // Attempts before going into deep-sleep
-/*
- *  Fuel tank dimensions
- */
-unsigned const int tank_height = 105;
-unsigned const int tank_length = 165;
-unsigned const int tank_width  = 65;
 /*
  *  Network constants
  */
-const char  *NTWK_SSID = "<SSID>";
-const char  *NTWK_PASS = "<PSWD>";
+const char *    NTWK_SSID = "<NTWK_SSID>";
+const char *    NTWK_PASS = "<NTWK_PASS>";
 /*
  *  MQTT constants
  */
-const char  *MQTT_HOST = "<HOSTADDR>";
-const char  *MQTT_USER = "<MQTT_USER>";
-const char  *MQTT_PASS = "<MQTT_PASS>";
+const char *    MQTT_HOST = "<MQTT_HOST>";
+const char *    MQTT_USER = "<MQTT_USER>";
+const char *    MQTT_PASS = "<MQTT_PASS>";
+/*
+ *  Pin definitions
+ */
+const uint8_t   TRIG_PIN = 14;      // D5
+const uint8_t   ECHO_PIN = 12;      // D6
+/*
+ *  Fuel tank dimensions
+ */
+const uint8_t   TANK_HEIGHT = 105;
+const uint8_t   TANK_LENGTH = 165;
+const uint8_t   TANK_WIDTH  = 65;
+/*
+ *  Other constants
+ */
+const uint8_t   WIFI_MQTT_TRY  = 10;            // Attempts before going into deep-sleep
+const uint64_t  SLEEP_DURATION = 21600000000;   // 6 hours
 /*
  *  Global variables
  */
 WiFiClient      net;
 MQTTClient      client;
-NewPing         sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
-unsigned long   lastMillis = 0;
-unsigned long   attempt    = 0;
+HCSR04          hc(TRIG_PIN, ECHO_PIN);
+int             lastMillis = 0;
+uint8_t         attempt    = 0;
 
 //
 //  Helper function for deep-sleep processing
 //
 void go_deep_sleep() {
     Serial.println("Entering deep-sleep state...");
-    ESP.deepSleep(SLEEP_DURATION * 1000000UL, WAKE_RF_DEFAULT);
+    ESP.deepSleep(SLEEP_DURATION, WAKE_RF_DEFAULT);
 }
 
 //
@@ -46,9 +50,14 @@ void go_deep_sleep() {
 //  get current fuel level
 //
 int get_tank_capacity() {
-    delay(50);
-    unsigned int sonar_depth_cm = (sonar.ping() / US_ROUNDTRIP_CM);
-    return ((tank_height - sonar_depth_cm + 5) * tank_length * tank_width / 1000);
+    unsigned int sonar_depth_cm = hc.dist();
+    
+    if (sonar_depth_cm > (TANK_HEIGHT + 5)) {
+        return 0;
+    }
+    else {
+        return ((TANK_HEIGHT - sonar_depth_cm + 5) * TANK_LENGTH * TANK_WIDTH / 1000);
+    }
 }
 
 //
@@ -85,13 +94,9 @@ void connect() {
 }
 
 void messageReceived(String &topic, String &payload) {
-    while ( attempt < 10 ) {
-        Serial.println("Incoming data: " + topic + " - " + payload);
-        attempt++;
-    }
+    Serial.println("Incoming data: " + topic + " - " + payload);
     go_deep_sleep();
 }
-
 
 void setup() {
     pinMode(TRIG_PIN, OUTPUT); 
@@ -119,11 +124,7 @@ void loop() {
     //
     if (millis() - lastMillis > 1000) {
         lastMillis = millis();
-        client.publish("/oil_sensor", String(get_tank_capacity(), DEC));
-
-        if ( attempt >= WIFI_MQTT_TRY ) {
-            go_deep_sleep();
-        }
-        attempt++;
+        String volume = String(get_tank_capacity(), DEC);
+        client.publish("/oil_sensor", volume);
     }
 }
